@@ -20,31 +20,32 @@
         .team-header p { font-size: 13px; color: #94a3b8; margin-top: 10px; }
 
         .commission-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            display: flex;
+            justify-content: center;
             padding: 20px;
             margin-top: -30px;
         }
         .comm-card {
             background: #1e293b;
-            padding: 15px 5px;
+            padding: 20px 30px;
             border-radius: 12px;
             text-align: center;
             border: 1px solid #38bdf8;
+            width: 100%;
+            max-width: 300px;
         }
         .lv-badge {
             display: inline-block;
             background: #38bdf8;
             color: #0f172a;
-            padding: 2px 8px;
+            padding: 2px 12px;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 14px;
             margin-bottom: 8px;
         }
-        .comm-rate { font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #38bdf8; }
-        .comm-stats { font-size: 10px; color: #cbd5e1; line-height: 1.4; }
+        .comm-rate { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #38bdf8; }
+        .comm-stats { font-size: 12px; color: #cbd5e1; line-height: 1.6; }
 
         .nav-buttons { display: flex; justify-content: center; gap: 15px; padding: 0 20px 20px; }
         .btn-outline {
@@ -123,19 +124,9 @@
 
     <div class="commission-grid">
         <div class="comm-card">
-            <div class="lv-badge">Lv1</div>
+            <div class="lv-badge">Parrainage Direct</div>
             <div class="comm-rate">25%</div>
             <div class="comm-stats">Membres: <span id="countLv1">0</span><br><span id="rewardLv1">0 FC</span></div>
-        </div>
-        <div class="comm-card">
-            <div class="lv-badge">Lv2</div>
-            <div class="comm-rate">2%</div>
-            <div class="comm-stats">Membres: <span id="countLv2">0</span><br><span id="rewardLv2">0 FC</span></div>
-        </div>
-        <div class="comm-card">
-            <div class="lv-badge">Lv3</div>
-            <div class="comm-rate">1%</div>
-            <div class="comm-stats">Membres: <span id="countLv3">0</span><br><span id="rewardLv3">0 FC</span></div>
         </div>
     </div>
 
@@ -189,35 +180,17 @@
                 const users = await response.json();
                 if (!users) return;
 
-                // Conversion de l'objet Firebase en tableau utilisable
                 const userList = Object.keys(users).map(key => ({ ...users[key], phone: key }));
                 
-                // --- CALCULS ---
-                // Niveau 1
+                // --- CALCUL UNIQUEMENT DU NIVEAU 1 (DIRECT) ---
                 const lv1 = userList.filter(u => u.referredBy && String(u.referredBy).slice(-6) === myInviteCode);
                 const g1 = lv1.reduce((acc, u) => acc + parseFloat(u.gainParrainageLv1 || 0), 0);
-
-                // Niveau 2
-                const lv1Codes = lv1.map(u => u.phone.slice(-6));
-                const lv2 = userList.filter(u => u.referredBy && lv1Codes.includes(String(u.referredBy).slice(-6)));
-                const g2 = lv2.reduce((acc, u) => acc + parseFloat(u.gainParrainageLv2 || 0), 0);
-
-                // Niveau 3
-                const lv2Codes = lv2.map(u => u.phone.slice(-6));
-                const lv3 = userList.filter(u => u.referredBy && lv2Codes.includes(String(u.referredBy).slice(-6)));
-                const g3 = lv3.reduce((acc, u) => acc + parseFloat(u.gainParrainageLv3 || 0), 0);
 
                 // --- AFFICHAGE ---
                 document.getElementById('countLv1').innerText = lv1.length;
                 document.getElementById('rewardLv1').innerText = g1.toLocaleString() + " FC";
                 
-                document.getElementById('countLv2').innerText = lv2.length;
-                document.getElementById('rewardLv2').innerText = g2.toLocaleString() + " FC";
-                
-                document.getElementById('countLv3').innerText = lv3.length;
-                document.getElementById('rewardLv3').innerText = g3.toLocaleString() + " FC";
-                
-                document.getElementById('totalTeam').innerText = (lv1.length + lv2.length + lv3.length);
+                document.getElementById('totalTeam').innerText = lv1.length;
             } catch (e) { console.error("Erreur chargement équipe:", e); }
         }
         loadTeamData();
