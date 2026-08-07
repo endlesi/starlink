@@ -165,72 +165,69 @@
                 const response = await fetch(`${dbUrl}/${userPhone}.json`);
                 const currentUser = await response.json();
                 
-                if (currentUser && (currentUser.balance >= price)) {
+                if (currentUser && (parseFloat(currentUser.balance || 0) >= price)) {
+                    // 1. Mettre à jour le solde de l'acheteur
                     await fetch(`${dbUrl}/${userPhone}.json`, {
                         method: 'PATCH',
-                        body: JSON.stringify({ balance: currentUser.balance - price, hasPurchased: true })
+                        body: JSON.stringify({ 
+                            balance: parseFloat(currentUser.balance || 0) - price, 
+                            hasPurchased: true 
+                        })
                     });
                     
+                    // 2. Enregistrer le produit avec l'horodatage pour le cycle de 24h
+                    const now = Date.now();
                     await fetch(`${mainBaseUrl}/purchases/${userPhone}.json`, {
                         method: 'POST',
-                        body: JSON.stringify({ name, price, dailyIncome: daily, purchaseDate: new Date().toISOString() })
+                        body: JSON.stringify({ 
+                            name: name, 
+                            price: price, 
+                            dailyIncome: daily, 
+                            purchaseDate: new Date(now).toISOString(),
+                            lastClaimTimestamp: now
+                        })
                     });
 
+                    // 3. Distribution de la commission DIRECTE (25%) uniquement
                     if (currentUser.referredBy) {
                         const allUsersRes = await fetch(`${dbUrl}.json`);
                         const allUsers = await allUsersRes.json();
                         
-                        const parrainLv1 = Object.values(allUsers).find(u => u.phone && u.phone.slice(-6) === currentUser.referredBy);
-                        if (parrainLv1) {
-                            const comLv1 = price * 0.25;
-                            await fetch(`${dbUrl}/${parrainLv1.phone}.json`, {
-                                method: 'PATCH',
-                                body: JSON.stringify({ 
-                                    gainParrainageLv1: (parseFloat(parrainLv1.gainParrainageLv1 || 0) + comLv1),
-                                    balance: (parseFloat(parrainLv1.balance || 0) + comLv1)
-                                })
-                            });
-
-                            if (parrainLv1.referredBy) {
-                                const parrainLv2 = Object.values(allUsers).find(u => u.phone && u.phone.slice(-6) === parrainLv1.referredBy);
-                                if (parrainLv2) {
-                                    const comLv2 = price * 0.02;
-                                    await fetch(`${dbUrl}/${parrainLv2.phone}.json`, {
-                                        method: 'PATCH',
-                                        body: JSON.stringify({ 
-                                            gainParrainageLv2: (parseFloat(parrainLv2.gainParrainageLv2 || 0) + comLv2),
-                                            balance: (parseFloat(parrainLv2.balance || 0) + comLv2)
-                                        })
-                                    });
-
-                                    if (parrainLv2.referredBy) {
-                                        const parrainLv3 = Object.values(allUsers).find(u => u.phone && u.phone.slice(-6) === parrainLv2.referredBy);
-                                        if (parrainLv3) {
-                                            const comLv3 = price * 0.01;
-                                            await fetch(`${dbUrl}/${parrainLv3.phone}.json`, {
-                                                method: 'PATCH',
-                                                body: JSON.stringify({ 
-                                                    gainParrainageLv3: (parseFloat(parrainLv3.gainParrainageLv3 || 0) + comLv3),
-                                                    balance: (parseFloat(parrainLv3.balance || 0) + comLv3)
-                                                })
-                                            });
-                                        }
-                                    }
-                                }
+                        if (allUsers) {
+                            const parrainLv1Key = Object.keys(allUsers).find(key => key.slice(-6) === currentUser.referredBy || (allUsers[key].phone && allUsers[key].phone.slice(-6) === currentUser.referredBy));
+                            
+                            if (parrainLv1Key) {
+                                const parrainLv1 = allUsers[parrainLv1Key];
+                                const comLv1 = price * 0.25; // 25%
+                                
+                                await fetch(`${dbUrl}/${parrainLv1Key}.json`, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ 
+                                        gainParrainageLv1: (parseFloat(parrainLv1.gainParrainageLv1 || 0) + comLv1),
+                                        balance: (parseFloat(parrainLv1.balance || 0) + comLv1)
+                                    })
+                                });
                             }
                         }
                     }
 
                     alert("Achat Starlink réussi !");
                     location.reload();
-                } else { alert("Solde insuffisant !"); }
-            } catch (e) { alert("Erreur réseau."); }
+                } else { 
+                    alert("Solde insuffisant !"); 
+                }
+            } catch (e) { 
+                console.error(e);
+                alert("Erreur réseau lors de la transaction."); 
+            }
         }
 
-        fetch(`${dbUrl}/${userPhone}.json`).then(r=>r.json()).then(u => {
-            document.getElementById('totalEarn').innerText = "FC " + (u.earnings || 0).toLocaleString();
+        fetch(`${dbUrl}/${userPhone}.json`).then(r => r.json()).then(u => {
+            if (u) {
+                document.getElementById('totalEarn').innerText = "FC " + (parseFloat(u.earnings || 0)).toLocaleString();
+            }
         });
-        fetch(`${mainBaseUrl}/purchases/${userPhone}.json`).then(r=>r.json()).then(p => {
+        fetch(`${mainBaseUrl}/purchases/${userPhone}.json`).then(r => r.json()).then(p => {
             document.getElementById('prodCount').innerText = p ? Object.keys(p).length : 0;
         });
     </script>
