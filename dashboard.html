@@ -144,21 +144,74 @@
 
         if (!userPhone) { window.location.href = 'index.html'; }
 
-        async function fetchUserData() {
+        async function processDailyEarnings() {
             try {
-                // Requête directe vers l'utilisateur connecté (comme sur la page Profil)
-                const response = await fetch(`${mainBaseUrl}/users/${userPhone}.json`);
-                const currentUser = await response.json();
+                // 1. Récupérer les données de l'utilisateur
+                const userRes = await fetch(`${mainBaseUrl}/users/${userPhone}.json`);
+                let currentUser = await userRes.json();
 
-                if (currentUser) {
-                    // Utilisation de Number() pour forcer le bon format
-                    let soldeAAfficher = Number(currentUser.balance || 0);
-                    
-                    document.getElementById('userBalance').innerText = soldeAAfficher.toLocaleString() + " FC";
-                    document.getElementById('userEarnings').innerText = Number(currentUser.earnings || 0).toLocaleString() + " FC";
+                if (!currentUser) return;
+
+                // 2. Récupérer les achats de l'utilisateur
+                const purchasesRes = await fetch(`${mainBaseUrl}/purchases/${userPhone}.json`);
+                const purchases = await purchasesRes.json();
+
+                if (purchases) {
+                    const now = Date.now();
+                    const DAY_IN_MS = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
+                    let accumulatedIncome = 0;
+                    let purchaseUpdates = {};
+
+                    for (let key in purchases) {
+                        const item = purchases[key];
+                        if (item && item.dailyIncome) {
+                            const lastClaim = item.lastClaimTimestamp || new Date(item.purchaseDate).getTime() || now;
+                            const timePassed = now - lastClaim;
+
+                            // Calculer combien de tranches de 24h se sont écoulées
+                            if (timePassed >= DAY_IN_MS) {
+                                const cycles = Math.floor(timePassed / DAY_IN_MS);
+                                const gainForThisProduct = cycles * parseFloat(item.dailyIncome);
+                                accumulatedIncome += gainForThisProduct;
+
+                                // Mettre à jour la date de dernière réclamation
+                                const newLastClaim = lastClaim + (cycles * DAY_IN_MS);
+                                purchaseUpdates[`${key}/lastClaimTimestamp`] = newLastClaim;
+                            }
+                        }
+                    }
+
+                    // 3. Distribuer les revenus s'il y a des cycles de 24h complétés
+                    if (accumulatedIncome > 0) {
+                        const newBalance = parseFloat(currentUser.balance || 0) + accumulatedIncome;
+                        const newEarnings = parseFloat(currentUser.earnings || 0) + accumulatedIncome;
+
+                        // Mise à jour de l'utilisateur sur Firebase
+                        await fetch(`${mainBaseUrl}/users/${userPhone}.json`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                balance: newBalance,
+                                earnings: newEarnings
+                            })
+                        });
+
+                        // Mise à jour des timestamps d'achats sur Firebase
+                        await fetch(`${mainBaseUrl}/purchases/${userPhone}.json`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(purchaseUpdates)
+                        });
+
+                        currentUser.balance = newBalance;
+                        currentUser.earnings = newEarnings;
+                    }
                 }
+
+                // 4. Mettre à jour l'affichage sur la page
+                document.getElementById('userBalance').innerText = Number(currentUser.balance || 0).toLocaleString('fr-FR') + " FC";
+                document.getElementById('userEarnings').innerText = Number(currentUser.earnings || 0).toLocaleString('fr-FR') + " FC";
+
             } catch (e) { 
-                console.error("Erreur chargement des données :", e); 
+                console.error("Erreur chargement et distribution des revenus :", e); 
             }
         }
 
@@ -167,7 +220,7 @@
             document.getElementById('tickerText').innerText = `Un nouvel utilisateur vient de retirer ${randAmt[Math.floor(Math.random()*randAmt.length)]} FC sur Starlink...`;
         }
 
-        fetchUserData();
+        processDailyEarnings();
         setInterval(updateTicker, 10000);
     </script>
 </body>
