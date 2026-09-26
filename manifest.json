@@ -1,16 +1,16 @@
 {
-  "name": "Starlink",
-  "short_name": "Starlink",
+  "name": "starlink",
+  "short_name": "starlink",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#38bdf8",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#E91E63",
   "icons": [
     {
-      "src": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/svgs/solid/satellite.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "src": "IMG_8923.jpeg",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
