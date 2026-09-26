@@ -14,8 +14,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght=700&family=Roboto:wght=400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
     <style>
         body { font-family: 'Roboto', sans-serif; background-color: #0f172a; color: white; }
         .logo-wrapper { text-align: center; margin-bottom: 30px; }
@@ -81,42 +80,83 @@
             });
         }
 
-        // Configuration Firebase
-        const firebaseConfig = { databaseURL: "https://canal-e4274-default-rtdb.firebaseio.com/" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const dbUrl = "https://canal-e4274-default-rtdb.firebaseio.com/users";
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const phone = document.getElementById('phone').value;
-            const pin = document.getElementById('pin').value;
+            
             const btn = document.getElementById('loginBtn');
+            const phoneInput = document.getElementById('phone').value.trim();
+            const pinInput = document.getElementById('pin').value;
+            
+            // Formatage du numéro pour s'aligner sur la logique Quartz (+243)
+            let fullPhone = phoneInput;
+            if (!phoneInput.startsWith("+")) {
+                fullPhone = "+243" + (phoneInput.startsWith("0") ? phoneInput.substring(1) : phoneInput);
+            }
 
-            btn.disabled = true;
             btn.innerText = "VÉRIFICATION...";
+            btn.disabled = true;
 
-            // Recherche de l'utilisateur par numéro de téléphone
-            db.ref('users').orderByChild('phone').equalTo(phone).once('value', snapshot => {
-                if (snapshot.exists()) {
-                    let user;
-                    snapshot.forEach(child => { user = child.val(); });
-                    
-                    if (user.password === pin) {
-                        // Enregistrement de la session
-                        localStorage.setItem('userPhone', phone);
-                        
-                        alert("Connexion réussie !");
-                        // Redirection vers dashboard.html
-                        window.location.href = "dashboard.html";
+            try {
+                // 1. Essai de récupération directe
+                const response = await fetch(`${dbUrl}/${fullPhone}.json`);
+                const userFound = await response.json();
+
+                if (userFound !== null) {
+                    // Vérification du mot de passe (gère 'password' ou 'pin' selon comment c'est stocké)
+                    if (userFound.password === pinInput || userFound.pin === pinInput) {
+                        localStorage.setItem('userPhone', fullPhone);
+                        localStorage.setItem('isLoggedIn', 'true');
+                        window.location.href = 'dashboard.html';
+                        return;
                     } else {
                         alert("Mot de passe incorrect.");
-                        btn.disabled = false; btn.innerText = "SE CONNECTER";
+                        btn.innerText = "SE CONNECTER";
+                        btn.disabled = false;
+                        return;
                     }
                 } else {
-                    alert("Numéro non trouvé.");
-                    btn.disabled = false; btn.innerText = "SE CONNECTER";
+                    // 2. Logique de secours (Fallback) : recherche dans tous les utilisateurs comme sur Quartz
+                    const backResponse = await fetch(`${dbUrl}.json`);
+                    const allUsers = await backResponse.json();
+                    let oldUser = null;
+                    let foundKey = null;
+
+                    if (allUsers) {
+                        for (let id in allUsers) {
+                            if (allUsers[id].phone === fullPhone || allUsers[id].phone === phoneInput || id === fullPhone || id === phoneInput) {
+                                oldUser = allUsers[id];
+                                foundKey = id;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (oldUser) {
+                        if (oldUser.password === pinInput || oldUser.pin === pinInput) {
+                            localStorage.setItem('userPhone', foundKey || oldUser.phone);
+                            localStorage.setItem('isLoggedIn', 'true');
+                            window.location.href = 'dashboard.html';
+                            return;
+                        } else {
+                            alert("Mot de passe incorrect.");
+                            btn.innerText = "SE CONNECTER";
+                            btn.disabled = false;
+                            return;
+                        }
+                    }
+
+                    alert("Numéro non inscrit.");
+                    btn.innerText = "SE CONNECTER";
+                    btn.disabled = false;
                 }
-            });
+            } catch (error) {
+                console.error(error);
+                alert("Erreur de connexion.");
+                btn.innerText = "SE CONNECTER";
+                btn.disabled = false;
+            }
         });
     </script>
 </body>
