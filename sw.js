@@ -1,6 +1,6 @@
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open('quartz-store').then((cache) => {
+    caches.open('starlink-store').then((cache) => {
       return cache.addAll(['index.html', 'register.html', 'dashboard.html']);
     })
   );
