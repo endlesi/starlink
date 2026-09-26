@@ -1,15 +1,16 @@
 {
-  "name": "starlink",
-  "short_name": "starlink",
+  "name": "Starlink",
+  "short_name": "Starlink",
+  "description": "Plateforme d'investissement et de gestion d'équipe Starlink.",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#E91E63",
+  "background_color": "#0f172a",
+  "theme_color": "#38bdf8",
   "icons": [
     {
       "src": "IMG_8923.jpeg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]
