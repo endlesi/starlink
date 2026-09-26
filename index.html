@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Starlink | Connexion</title>
     
+    <!-- Description ajoutée pour la validation PWA -->
+    <meta name="description" content="Plateforme d'investissement et de gestion d'équipe Starlink.">
+    
     <!-- Lien vers le manifest pour transformer en application web installable -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#38bdf8">
@@ -89,7 +92,6 @@
             const phoneInput = document.getElementById('phone').value.trim();
             const pinInput = document.getElementById('pin').value;
             
-            // Formatage du numéro pour s'aligner sur la logique Quartz (+243)
             let fullPhone = phoneInput;
             if (!phoneInput.startsWith("+")) {
                 fullPhone = "+243" + (phoneInput.startsWith("0") ? phoneInput.substring(1) : phoneInput);
@@ -99,12 +101,10 @@
             btn.disabled = true;
 
             try {
-                // 1. Essai de récupération directe
                 const response = await fetch(`${dbUrl}/${fullPhone}.json`);
                 const userFound = await response.json();
 
                 if (userFound !== null) {
-                    // Vérification du mot de passe (gère 'password' ou 'pin' selon comment c'est stocké)
                     if (userFound.password === pinInput || userFound.pin === pinInput) {
                         localStorage.setItem('userPhone', fullPhone);
                         localStorage.setItem('isLoggedIn', 'true');
@@ -117,7 +117,6 @@
                         return;
                     }
                 } else {
-                    // 2. Logique de secours (Fallback) : recherche dans tous les utilisateurs comme sur Quartz
                     const backResponse = await fetch(`${dbUrl}.json`);
                     const allUsers = await backResponse.json();
                     let oldUser = null;
